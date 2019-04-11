@@ -40,6 +40,7 @@ public class JTextFieldX extends JTextField implements KeyListener,
         if (currentGuess != -1) {
             return possibilities[currentGuess];
         }
+
         return getText();
     }
 
@@ -103,17 +104,23 @@ public class JTextFieldX extends JTextField implements KeyListener,
 
     public void keyPressed(KeyEvent e) {
         if (e.getKeyCode() == KeyEvent.VK_TAB) {
-            if (this.areGuessing) {
-                this.setText(getCurrentGuess());
-                this.areGuessing = false;
+            if (e.getModifiers() > 0) {
+                transferFocusBackward();
+            } else {
+                transferFocus();
             }
-        } else if (e.getKeyCode() == KeyEvent.VK_ENTER) {
+            if (areGuessing) {
+                setText(getCurrentGuess());
+                areGuessing = false;
+            }
+        }
+        else if (e.getKeyCode() == KeyEvent.VK_ENTER) {
             if (this.areGuessing) {
                 this.setText(getText());
                 this.areGuessing = false;
                 e.consume();
             }
-        }
+        }else{}
     }
 
     public void keyReleased(KeyEvent e) {
