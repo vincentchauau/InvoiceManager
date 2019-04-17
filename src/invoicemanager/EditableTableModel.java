@@ -28,7 +28,7 @@ class EditableTableModel extends AbstractTableModel {
     boolean[] columnEditables;
     public int[] selectedRows;
     public double amount, gst, paid, GST;
-    public List<String> values;
+    public List<String[]> autoCompleteColumns;
     Function function = new Function();
     // 1. Get columns, column types
     public void getColumns(String database, String table) {
@@ -44,6 +44,11 @@ class EditableTableModel extends AbstractTableModel {
         columnFormats = new String[columns.length];
         Arrays.fill(columnFormats, ".*");
         columnDisplayFormats = new String[columns.length];
+        autoCompleteColumns = new ArrayList<>();
+        for (int i = 0; i < columns.length;++i)
+        {
+            autoCompleteColumns.add(Database.getValuesByColumn(table, columns[i]));
+        }
     }
     // 2. Set editable columns
     public boolean isCellEditable(int row, int column) {
@@ -70,21 +75,22 @@ class EditableTableModel extends AbstractTableModel {
     public Object getValueAt(int row, int column) {
         return rows.get(row)[column];
     }
+    
     public void setValueAt(Object value, int row, int column) 
     {
         String val = String.valueOf(value);
         if (val.matches(columnFormats[column]) || val.equals(""))
         {
+            Database.setRow(table, columns, types, column, String.valueOf(value), rows.get(row)[0]);
+            rows.get(row)[column] = String.valueOf(value);
+            fireTableRowsUpdated(row, row);
+            getStatistic();
             if (columns[column].equals("AMT"))
             {
                 double gst = function.parseDouble(val)*GST;
                 setValueAt(gst, row, column + 1);
             }
             else{}
-            Database.setRow(table, columns, types, column, String.valueOf(value), rows.get(row)[0]);
-            rows.get(row)[column] = String.valueOf(value);
-            getStatistic();
-            fireTableRowsUpdated(row, row);
         }
         else{}
     }
@@ -99,7 +105,7 @@ class EditableTableModel extends AbstractTableModel {
             newValues[0] = String.valueOf(id);
             rows.add(newValues);
         }
-        fireTableRowsInserted(rows.size()-number-1, number);
+        fireTableRowsInserted(rows.size()-number-1, rows.size() - 1);
         getStatistic();
     }
     // 6. Delete rows
@@ -247,6 +253,5 @@ class EditableTableModel extends AbstractTableModel {
             }
         } catch (Exception error) {
         }
-        values = Arrays.asList(Database.getValuesByColumn(table, "INVOICE"));
     }
 }

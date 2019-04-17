@@ -1,1 +1,5 @@
 databaseIndex:0
+mediumFont:18
+GST:0.1
+dueTime:-14
+smallFont:14

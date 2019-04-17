@@ -5,11 +5,19 @@
  */
 package invoicemanager;
 
+import java.awt.BorderLayout;
 import java.awt.Color;
 import java.awt.Component;
 import java.awt.Container;
 import java.awt.Desktop;
+import java.awt.Dimension;
+import java.awt.FocusTraversalPolicy;
 import java.awt.Font;
+import java.awt.KeyboardFocusManager;
+import java.awt.event.ActionEvent;
+import java.awt.event.ActionListener;
+import java.awt.event.KeyAdapter;
+import java.awt.event.KeyEvent;
 import java.awt.event.MouseAdapter;
 import java.awt.event.MouseEvent;
 import java.awt.print.PrinterJob;
@@ -31,6 +39,7 @@ import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.Random;
+import java.util.logging.ConsoleHandler;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 import javax.print.Doc;
@@ -41,11 +50,15 @@ import javax.print.SimpleDoc;
 import javax.print.attribute.HashPrintRequestAttributeSet;
 import javax.print.attribute.PrintRequestAttributeSet;
 import javax.print.attribute.standard.JobName;
+import javax.swing.JComboBox;
 import javax.swing.JOptionPane;
 import javax.swing.JTable;
+import javax.swing.JTextField;
 import javax.swing.RowSorter;
 import javax.swing.SortOrder;
 import javax.swing.UIManager;
+import javax.swing.event.DocumentEvent;
+import javax.swing.event.DocumentListener;
 import javax.swing.table.TableCellRenderer;
 import javax.swing.table.TableColumn;
 import javax.swing.table.TableModel;
@@ -275,8 +288,8 @@ public class Function {
     }
 
     public static void sort(JTable table) {
-        table.setRowSelectionAllowed(true);
-        table.setColumnSelectionAllowed(true);
+        //table.setRowSelectionAllowed(true);
+        //table.setColumnSelectionAllowed(true);
         table.getTableHeader().setForeground(Color.BLUE);
         table.getTableHeader().setReorderingAllowed(false);
         table.setRowHeight(20);
@@ -335,4 +348,96 @@ public class Function {
             }
         }
     }
+    public static void autoComplete(JTextField tfInput, ArrayList<String> items) {
+        JComboBox cbInput = new JComboBox() {
+            public Dimension getPreferredSize() {
+                return new Dimension(super.getPreferredSize().width, 0);
+            }
+        };
+        cbInput.putClientProperty("adjusting", false);
+        for (String item : items) {
+            cbInput.addItem(item);
+        }
+        cbInput.setSelectedItem(null);
+        cbInput.addActionListener(new ActionListener() {
+            @Override
+            public void actionPerformed(ActionEvent e) {
+                if (!(Boolean) cbInput.getClientProperty("adjusting")) {
+                    if (cbInput.getSelectedItem() != null) {
+                        tfInput.setText(cbInput.getSelectedItem().toString());
+                    }
+                }
+            }
+        });
+
+        tfInput.addKeyListener(new KeyAdapter() {
+            @Override
+            public void keyPressed(KeyEvent e) {
+                cbInput.putClientProperty("adjusting", true);
+                if (e.getKeyCode() == KeyEvent.VK_UP || e.getKeyCode() == KeyEvent.VK_DOWN) {
+                    e.setSource(cbInput);
+                    cbInput.dispatchEvent(e);
+                } else if (e.getKeyCode() == KeyEvent.VK_ENTER) {
+                    tfInput.setText(cbInput.getSelectedItem().toString());
+                    cbInput.setPopupVisible(false);
+                } else if (e.getKeyCode() == KeyEvent.VK_ESCAPE) {
+                    cbInput.setPopupVisible(false);
+                } else {
+                }
+                cbInput.putClientProperty("adjusting", false);
+            }
+        });
+        tfInput.getDocument().addDocumentListener(new DocumentListener() {
+            public void insertUpdate(DocumentEvent e) {
+                getAutoCompleteData();
+            }
+
+            public void removeUpdate(DocumentEvent e) {
+                getAutoCompleteData();
+            }
+
+            public void changedUpdate(DocumentEvent e) {
+            }
+
+            private void getAutoCompleteData() {
+                cbInput.putClientProperty("adjusting", true);
+                cbInput.removeAllItems();
+                String input = tfInput.getText();
+                if (!input.isEmpty()) {
+                    for (String item : items) {
+                        if (item.toLowerCase().startsWith(input.toLowerCase())) {
+                            cbInput.addItem(item);
+                        }
+                    }
+                }
+                cbInput.setPopupVisible(cbInput.getItemCount() > 0);
+                cbInput.putClientProperty("adjusting", false);
+            }
+        });
+        tfInput.setLayout(new BorderLayout());
+        tfInput.add(cbInput, BorderLayout.SOUTH);
+    }
+    public static Component getPreviousComponent() {
+        Component c = KeyboardFocusManager.getCurrentKeyboardFocusManager().getFocusOwner();
+        Container root = c.getFocusCycleRootAncestor();
+        FocusTraversalPolicy policy = root.getFocusTraversalPolicy();
+        Component prevFocus = policy.getComponentBefore(root, c);
+        if (prevFocus == null) {
+            prevFocus = policy.getDefaultComponent(root);
+        }
+        return prevFocus;
+    }
+    public static Component getCurrentComponent()
+    {
+        return KeyboardFocusManager.getCurrentKeyboardFocusManager().getFocusOwner();
+    }
+    public static void focusDebug() {
+        // java.awt.focus.DefaultKeyboardFocusManager
+        // java.awt.focus.Component
+    Logger focusLog = Logger.getLogger("java.awt.focus.DefaultKeyboardFocusManager");
+    focusLog.setLevel(Level.ALL);
+    ConsoleHandler handler = new ConsoleHandler();
+    handler.setLevel(Level.ALL);
+    focusLog.addHandler(handler);
+}
 }

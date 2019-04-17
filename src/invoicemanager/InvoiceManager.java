@@ -22,9 +22,11 @@ import java.text.NumberFormat;
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.Date;
+import java.util.EventObject;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.TimeUnit;
+import javax.swing.DefaultCellEditor;
 import javax.swing.ImageIcon;
 import javax.swing.JButton;
 import javax.swing.JComboBox;
@@ -40,6 +42,8 @@ import javax.swing.JScrollPane;
 import javax.swing.JSplitPane;
 import javax.swing.JTable;
 import javax.swing.JToolBar;
+import javax.swing.ListSelectionModel;
+import javax.swing.SwingUtilities;
 import javax.swing.event.ListSelectionEvent;
 import javax.swing.event.ListSelectionListener;
 import javax.swing.event.TableModelEvent;
@@ -80,22 +84,20 @@ public class InvoiceManager {
     private static DefaultTableModel modelPick;
     private static SimpleDateFormat dateFormat1;
     private static SimpleDateFormat dateFormat2;
-    private static NumberFormat currencyFormat;
     private static NumberFormat doubleFormat;
     private static NumberFormat percentageFormat;
     private static ExcelAdapter excelAdapter;
     private static Function function;
 
     // Clear inputs
-    private static void clearInputPickValues() {
-        modelPick.setRowCount(0);
+    private static void clearSetValues() {
         for (int i = 0; i < modelGet.getColumnCount(); ++i) {
             ((JTextFieldX) pnSet.getComponent(i * 2 + 1)).setText("");
         }
     }
 
     // Get inputs
-    private static String[] getInputValues() {
+    private static String[] getSetValues() {
         List<String> inputs = new ArrayList<>();
         for (int i = 0; i < pnSet.getComponentCount() / 2; ++i) {
             Component c = pnSet.getComponent(i * 2 + 1);
@@ -108,8 +110,7 @@ public class InvoiceManager {
     }
 
     // Get input values, pick values
-    private static void getInputPickValues(int r, int c) {
-        if (r != -1 && c != -1) {
+    private static void getSetPickValues(int r) {
             String[] values = modelGet.rows.get(r);
             for (int i = 0; i < modelGet.columns.length; ++i) {
                 ((JTextFieldX) pnSet.getComponent(i * 2 + 1)).setText(values[i]);
@@ -130,15 +131,14 @@ public class InvoiceManager {
                 }
             } else {
             }
-        } else {
-        }
     }
 
     public static void main(String args[]) {
         try {
+            map = function.file2Map("configuration.txt");
             // Font & image
-            Font smallFont = new Font("Serif", Font.PLAIN, 14);
-            Font mediumFont = new Font("Serif", Font.PLAIN, 18);
+            Font smallFont = new Font("Serif", Font.PLAIN, Function.parseInt(map.get("smallFont")));
+            Font mediumFont = new Font("Serif", Font.PLAIN, Function.parseInt(map.get("mediumFont")));
             ImageIcon icClear = new ImageIcon("Icon/clear.png");
             ImageIcon icGet = new ImageIcon("Icon/get.png");
             ImageIcon icSet = new ImageIcon("Icon/set.png");
@@ -292,11 +292,9 @@ public class InvoiceManager {
 
             // Variables
             excelAdapter = new ExcelAdapter(tbGet);
-            function = new Function();
 
             modelGet = new EditableTableModel();
             modelPick = new DefaultTableModel();
-            currencyFormat = NumberFormat.getCurrencyInstance();
             percentageFormat = NumberFormat.getPercentInstance();
             doubleFormat = NumberFormat.getNumberInstance();
             doubleFormat.setMaximumFractionDigits(2);
@@ -305,7 +303,6 @@ public class InvoiceManager {
             dateFormat2 = new SimpleDateFormat("dd.MM.yy");
             function.changeFontRecursive(frame, mediumFont);
             function.setUIFont(new javax.swing.plaf.FontUIResource(mediumFont));
-            map = function.file2Map("configuration.txt");
             modelGet.GST = function.parseDouble(map.get("GST"));
             // Events
             // Logic: database => table => model
@@ -416,12 +413,12 @@ public class InvoiceManager {
                                             fileChooser.setFileSelectionMode(JFileChooser.FILES_ONLY);
                                             fileChooser.addChoosableFileFilter(new FileNameExtensionFilter("*.pdf", "pdf"));
                                             fileChooser.setAcceptAllFileFilterUsed(true);
-                                            int result = fileChooser.showSaveDialog(null);
+                                            int result = fileChooser.showOpenDialog(null);
                                             if (result == JFileChooser.APPROVE_OPTION) {
                                                 tfSet.setText(fileChooser.getSelectedFile().getAbsolutePath());
                                             }
+                                        } else {
                                         }
-                                        else{}
                                     }
                                 });
                             } else {
@@ -446,48 +443,11 @@ public class InvoiceManager {
                                     return true;
                                 }
                             };
-                            modelPick.addTableModelListener(new TableModelListener() {
-                                @Override
-                                public void tableChanged(TableModelEvent e) {
-                                    try {
-                                        if (modelGet.table.equals("SELL")) {
-                                            String items = "";
-                                            String value = "";
-                                            for (int i = 0; i < tbPick.getRowCount(); ++i) {
-                                                for (int j = 0; j < tbPick.getColumnCount(); ++j) {
-                                                    value = tbPick.getValueAt(i, j).toString().replace("\b", "");
-                                                    items += value + "\f";
-                                                }
-                                                items += "\b";
-                                            }
-                                            items = items.replace("\f\b", "\b");
-                                            if (!items.equals("")) {
-                                                items = items.substring(0, items.length() - 1);
-                                            }
-                                            ((JTextFieldX) pnSet.getComponent(modelGet.getColumnCount() * 2 - 1)).setText(items);
-                                            double totalAMT = 0;
-                                            double totalGST = 0;
-                                            double amt = 0, qtt = 0, gst = 0;
-                                            for (int i = 0; i < tbPick.getRowCount(); ++i) {
-                                                amt = function.parseDouble(tbPick.getValueAt(i, 1).toString());
-                                                qtt = function.parseDouble(tbPick.getValueAt(i, 2).toString());
-                                                gst = function.parseDouble(tbPick.getValueAt(i, 3).toString());
-                                                totalAMT += amt * qtt * (1 + gst);
-                                                totalGST += amt * qtt * gst;
-                                            }
-                                            ((JTextFieldX) pnSet.getComponent(7 * 2 + +1)).setText(String.valueOf(totalAMT));
-                                            ((JTextFieldX) pnSet.getComponent(8 * 2 + +1)).setText(String.valueOf(totalGST));
-
-                                        } else {
-                                        }
-                                    } catch (Exception error) {
-                                    }
-                                }
-                            });
                         }
                         spSetPick.setDividerLocation(pnSet.getPreferredSize().height / (double) spSetPick.getSize().height);
                         tbPick.setModel(modelPick);
                         tbPick.createDefaultColumnsFromModel();
+                        tbPick.getTableHeader().setFont(mediumFont);
 
                         // Add combobox, tooltips
                         cbColumns.removeAllItems();
@@ -496,11 +456,11 @@ public class InvoiceManager {
                             cbColumns.addItem("ADR");
                             cbColumns.addItem("SELLER");
                             cbColumns.addItem("CAT");
-                            modelGet.toolTips = new String[]{"Which row?", "Which job?", "Who sell items", "Which tax category?", "Which items?", "Which invoice number?", "Which issued date?", "How much amount with GST?", "How much GST?", "Invoice file", "Which paid date?", "How to pay?"};
+                            modelGet.toolTips = new String[]{"Which row?", "Which job?", "Who sell items?", "Which tax category?", "Which items?", "Which invoice number?", "Which issued date?", "How much amount with GST?", "How much GST?", "Invoice file", "Which paid date?", "How to pay?"};
 
                         } else {
                             modelGet.columnEditables[11] = false;
-                            modelGet.toolTips = new String[]{"ID", "Which customer address?", "Which customer?", "Which customer category?", "Which customer description?", "Which invoice number?", "Which issued date?", "How much amount with GST?", "How much GST?", "Which invoice file?", "Which paid date?", "Which items?"};
+                            modelGet.toolTips = new String[]{"Which row?", "Which customer address?", "Which customer?", "Which customer category?", "Which customer description?", "Which invoice number?", "Which issued date?", "How much amount with GST?", "How much GST?", "Which invoice file?", "Which paid date?", "Which items?"};
                         }
                         modelGet.columnAligns[6] = 1;
                         modelGet.columnAligns[10] = 1;
@@ -510,10 +470,34 @@ public class InvoiceManager {
                         modelGet.columnFormats[8] = "^([+-]?([0-9]+\\.)?[0-9]+)$";
                         modelGet.columnFormats[6] = "^[0-3][0-9]/[0-3][0-9]/[0-9]{2}$";
                         modelGet.columnFormats[10] = "^[0-3][0-9]/[0-3][0-9]/[0-9]{2}$";
-                        modelGet.getRows(getInputValues());
+                        modelGet.getRows(getSetValues());
                         tbGet.setModel(modelGet);
                         tbGet.createDefaultColumnsFromModel();
+                        tbGet.getTableHeader().setFont(mediumFont);
+                        tbGet.setCellSelectionEnabled(true);
+                        tbGet.setSelectionMode(ListSelectionModel.MULTIPLE_INTERVAL_SELECTION);
                         tbGet.getColumnModel().getColumn(0).setPreferredWidth(40);
+                        for (int i = 0; i < tbGet.getColumnCount(); ++i) {
+                            JTextFieldX tfColumnCell = new JTextFieldX(modelGet.autoCompleteColumns.get(i));
+                            tbGet.getColumnModel().getColumn(i).setCellEditor(new DefaultCellEditor(tfColumnCell) {
+                                public boolean isCellEditable(EventObject evt) {
+                                    if (evt instanceof MouseEvent) {
+                                        if (((MouseEvent) evt).getClickCount() == 2) {
+                                            return true;
+                                        } else {
+                                            return false;
+                                        }
+                                    } else if (evt instanceof KeyEvent) {
+                                        SwingUtilities.invokeLater(new Runnable() {
+                                            public void run() {
+                                                getComponent().requestFocusInWindow();
+                                            }
+                                        });
+                                    }
+                                    return true;
+                                }
+                            });
+                        }
                     }
                 }
             });
@@ -529,12 +513,13 @@ public class InvoiceManager {
                     }
                 }
             });
+            //Function.focusDebug();
             // 4. Get input values, pick values
             tbGet.getSelectionModel().addListSelectionListener(new ListSelectionListener() {
                 public void valueChanged(ListSelectionEvent e) {
                     try {
-                        if (e.getValueIsAdjusting() == false) {
-                            getInputPickValues(tbGet.convertRowIndexToModel(tbGet.getSelectedRow()), tbGet.convertColumnIndexToModel(tbGet.getSelectedColumn()));
+                        if (e.getValueIsAdjusting()) {
+                            getSetPickValues(tbGet.convertRowIndexToModel(tbGet.getSelectedRow()));
                         } else {
                         }
                     } catch (Exception error) {
@@ -545,12 +530,21 @@ public class InvoiceManager {
                 @Override
                 public void tableChanged(TableModelEvent e) {
                     lbStatistic.setText("Amount: " + doubleFormat.format(modelGet.amount) + " GST: " + doubleFormat.format(modelGet.gst) + " Paid: " + doubleFormat.format(modelGet.paid));
-                    getInputPickValues(e.getFirstRow(), e.getColumn());
+                    // SELECT, UPDATE => getSelectedRow, INSERT, DELETE => get FirstRow 
+                    if (e.getType() == TableModelEvent.INSERT || e.getType() == TableModelEvent.DELETE) {
+                        if (tbGet.getRowCount() > 0)
+                            getSetPickValues(tbGet.convertRowIndexToModel(0));
+                        else
+                            modelPick.setRowCount(0);
+                    } else {
+                        if (tbGet.getSelectedRow() != -1)
+                            getSetPickValues(tbGet.convertRowIndexToModel(tbGet.getSelectedRow()));
+                    }
                 }
             });
 
             // 5. Render(align, color, format) and sort get and pick tables
-            tbGet.setDefaultRenderer(Object.class,
+            tbGet.setDefaultRenderer(String.class,
                     new DefaultTableCellRenderer() {
                 @Override
                 public Component getTableCellRendererComponent(JTable table, Object value, boolean isSelected, boolean hasFocus, int row, int column) {
@@ -567,8 +561,8 @@ public class InvoiceManager {
                     } else {
                         ((JLabel) c).setHorizontalAlignment(JLabel.RIGHT);
                     }
-                    // tooltip
-                    c.setToolTipText((String) value);
+                    // tooltip: disabled coz it is confused with auto complete
+                    // c.setToolTipText((String) value);
                     // color
                     // selected cell
                     if (isSelected) {
@@ -590,7 +584,6 @@ public class InvoiceManager {
                             c.setBackground(Color.WHITE);
                         }
                     }
-                    tbGet.revalidate();
                     return c;
                 }
             });
@@ -605,6 +598,80 @@ public class InvoiceManager {
                     return tableCellRendererComponent;
                 }
             });
+            function.sort(tbGet);
+            // 6. Open file
+            tbGet.addMouseListener(new java.awt.event.MouseAdapter() {
+                @Override
+                public void mouseClicked(java.awt.event.MouseEvent e) {
+                    int column = tbGet.columnAtPoint(e.getPoint());
+                    int row = tbGet.rowAtPoint(e.getPoint());
+                    if (column >= 0 && row >= 0) {
+                        if (modelGet.columns[column].equals("FILE")) {
+                            if (e.getClickCount() == 2) {
+                                File file = new File(tbGet.getValueAt(row, column).toString());
+                                if (file.isFile()) {
+                                    Function.open(file, true);
+                                } else {
+                                    JFileChooser fileChooser = new JFileChooser();
+                                    fileChooser.setDialogTitle("Select the invoice file");
+                                    fileChooser.setCurrentDirectory(new File(function.getAppPath()));
+                                    fileChooser.setFileSelectionMode(JFileChooser.FILES_ONLY);
+                                    fileChooser.addChoosableFileFilter(new FileNameExtensionFilter("PDF files", "pdf"));
+                                    fileChooser.setAcceptAllFileFilterUsed(true);
+                                    int result = fileChooser.showOpenDialog(null);
+                                    if (result == JFileChooser.APPROVE_OPTION) {
+                                        modelGet.setValueAt(fileChooser.getSelectedFile().getAbsolutePath(), row, column);
+                                    }
+                                }
+                            } else {
+                            }
+                        } else {
+                        }
+                    } else {
+                    }
+                }
+            });
+            // PICK events
+            tbPick.getModel().addTableModelListener(new TableModelListener() {
+                @Override
+                public void tableChanged(TableModelEvent e) {
+                    try {
+                        if (modelGet.table.equals("SELL")) {
+                            String items = "";
+                            String value = "";
+                            for (int i = 0; i < tbPick.getRowCount(); ++i) {
+                                for (int j = 0; j < tbPick.getColumnCount(); ++j) {
+                                    value = tbPick.getValueAt(i, j).toString().replace("\b", "");
+                                    items += value + "\f";
+                                }
+                                items += "\b";
+                            }
+                            items = items.replace("\f\b", "\b");
+                            if (!items.equals("")) {
+                                items = items.substring(0, items.length() - 1);
+                            }
+                            ((JTextFieldX) pnSet.getComponent(modelGet.getColumnCount() * 2 - 1)).setText(items);
+                            double totalAMT = 0;
+                            double totalGST = 0;
+                            double amt = 0, qtt = 0, gst = 0;
+                            for (int i = 0; i < tbPick.getRowCount(); ++i) {
+                                amt = function.parseDouble(tbPick.getValueAt(i, 1).toString());
+                                qtt = function.parseDouble(tbPick.getValueAt(i, 2).toString());
+                                gst = function.parseDouble(tbPick.getValueAt(i, 3).toString());
+                                totalAMT += amt * qtt * (1 + gst);
+                                totalGST += amt * qtt * gst;
+                            }
+                            ((JTextFieldX) pnSet.getComponent(7 * 2 + +1)).setText(String.valueOf(totalAMT));
+                            ((JTextFieldX) pnSet.getComponent(8 * 2 + +1)).setText(String.valueOf(totalGST));
+
+                        } else {
+
+                        }
+                    } catch (Exception error) {
+                    }
+                }
+            });
+
             tbPick.setDefaultRenderer(Object.class,
                     new DefaultTableCellRenderer() {
                 @Override
@@ -655,47 +722,35 @@ public class InvoiceManager {
                 }
             }
             );
-            function.sort(tbGet);
-            function.sort(tbPick);
-
-            // 6. Open file
-            tbGet.addMouseListener(new java.awt.event.MouseAdapter() {
-                @Override
-                public void mouseClicked(java.awt.event.MouseEvent e) {
-                    int column = tbGet.columnAtPoint(e.getPoint());
-                    int row = tbGet.rowAtPoint(e.getPoint());
-                    if (column >= 0 && row >= 0) {
-                        if (modelGet.columns[column].equals("FILE")) {
-                            if (e.getClickCount() == 2) {
-                                File file = new File(tbGet.getValueAt(row, column).toString());
-                                if (file.isFile()) {
-                                    Function.open(file, true);
-                                } else {
-                                    JFileChooser fileChooser = new JFileChooser();
-                                    fileChooser.setDialogTitle("Select the invoice file");
-                                    fileChooser.setCurrentDirectory(new File(function.getAppPath()));
-                                    fileChooser.setFileSelectionMode(JFileChooser.FILES_ONLY);
-                                    fileChooser.addChoosableFileFilter(new FileNameExtensionFilter("PDF files", "pdf"));
-                                    fileChooser.setAcceptAllFileFilterUsed(true);
-                                    int result = fileChooser.showOpenDialog(null);
-                                    if (result == JFileChooser.APPROVE_OPTION) {
-                                        modelGet.setValueAt(fileChooser.getSelectedFile().getAbsolutePath(), row, column);
+            tbPick.getSelectionModel().addListSelectionListener(new ListSelectionListener() {
+                public void valueChanged(ListSelectionEvent e) {
+                    try {
+                        if (e.getValueIsAdjusting() == false) {
+                            if (modelGet.table.equals("SELL")) {
+                            } else {
+                                String value = tbPick.getValueAt(tbPick.getSelectedRow(), 0).toString();
+                                String grp = cbColumns.getSelectedItem().toString();
+                                clearSetValues();
+                                for (int i = 0; i < pnSet.getComponentCount() / 2; ++i) {
+                                    if (((JLabel) pnSet.getComponent(i * 2)).getText().equals(grp)) {
+                                        ((JTextFieldX) pnSet.getComponent(i * 2 + 1)).setText(value);
+                                    } else {
                                     }
                                 }
-                            } else {
+                                modelGet.getRows(getSetValues());
                             }
                         } else {
                         }
-                    } else {
+                    } catch (Exception error) {
                     }
                 }
             });
-
+            function.sort(tbPick);
             // 7. Clear input values
             btClear.addActionListener(new ActionListener() {
                 @Override
                 public void actionPerformed(ActionEvent e) {
-                    clearInputPickValues();
+                    clearSetValues();
                 }
             });
             // 8. Get get values with input values
@@ -703,7 +758,7 @@ public class InvoiceManager {
                 @Override
                 public void actionPerformed(ActionEvent e) {
                     try {
-                        modelGet.getRows(getInputValues());
+                        modelGet.getRows(getSetValues());
                     } catch (Exception error) {
                     }
                 }
@@ -715,7 +770,7 @@ public class InvoiceManager {
                 public void actionPerformed(ActionEvent e) {
                     try {
                         if (JOptionPane.showConfirmDialog(null, "Do you want to set input values into these selected rows?", "Set", JOptionPane.YES_NO_OPTION) == JOptionPane.YES_OPTION) {
-                            modelGet.setRows(function.view2ModelIndices(tbGet), getInputValues());
+                            modelGet.setRows(function.view2ModelIndices(tbGet), getSetValues());
                         } else {
                         }
                     } catch (Exception error) {
@@ -726,7 +781,7 @@ public class InvoiceManager {
             btInsert.addActionListener(new ActionListener() {
                 @Override
                 public void actionPerformed(ActionEvent e) {
-                    String[] inputs = getInputValues();
+                    String[] inputs = getSetValues();
                     if (inputs[7].equals("")) {
                         inputs[7] = "0";
                     }
@@ -759,7 +814,7 @@ public class InvoiceManager {
                 public void actionPerformed(ActionEvent e) {
                     if (tbGet.getSelectedRowCount() == -1) {
                         if (JOptionPane.showConfirmDialog(null, "Do you want to delete all of these rows?", "Delete", JOptionPane.YES_NO_OPTION) == JOptionPane.YES_OPTION) {
-                            modelGet.deleteRows(getInputValues());
+                            modelGet.deleteRows(getSetValues());
                         } else {
                         }
 
@@ -776,18 +831,15 @@ public class InvoiceManager {
             btImport.addActionListener(new ActionListener() {
                 @Override
                 public void actionPerformed(ActionEvent e) {
-                    try {
-                        JFileChooser fileChooser = new JFileChooser();
-                        fileChooser.setCurrentDirectory(new File(function.getAppPath() + "/Result"));
-                        fileChooser.setFileSelectionMode(JFileChooser.FILES_ONLY);
-                        fileChooser.addChoosableFileFilter(new FileNameExtensionFilter("Excel files", "xls"));
-                        fileChooser.addChoosableFileFilter(new FileNameExtensionFilter("CSV files", "csv"));
-                        fileChooser.setAcceptAllFileFilterUsed(true);
-                        int result = fileChooser.showOpenDialog(null);
-                        if (result == JFileChooser.APPROVE_OPTION) {
-                            modelGet.importFile(fileChooser.getSelectedFile());
-                        }
-                    } catch (Exception error) {
+                    JFileChooser fileChooser = new JFileChooser();
+                    fileChooser.setCurrentDirectory(new File(function.getAppPath() + "/Result"));
+                    fileChooser.setFileSelectionMode(JFileChooser.FILES_ONLY);
+                    fileChooser.addChoosableFileFilter(new FileNameExtensionFilter("Excel files", "xls"));
+                    fileChooser.addChoosableFileFilter(new FileNameExtensionFilter("CSV files", "csv"));
+                    fileChooser.setAcceptAllFileFilterUsed(true);
+                    int result = fileChooser.showOpenDialog(null);
+                    if (result == JFileChooser.APPROVE_OPTION) {
+                        modelGet.importFile(fileChooser.getSelectedFile());
                     }
                 }
             });
@@ -795,19 +847,16 @@ public class InvoiceManager {
             btExport.addActionListener(new ActionListener() {
                 @Override
                 public void actionPerformed(ActionEvent e) {
-                    try {
-                        JFileChooser fileChooser = new JFileChooser();
-                        fileChooser.setCurrentDirectory(new File(function.getAppPath() + "/Result"));
-                        fileChooser.setFileSelectionMode(JFileChooser.FILES_ONLY);
-                        fileChooser.addChoosableFileFilter(new FileNameExtensionFilter("Excel files", "xls"));
-                        fileChooser.addChoosableFileFilter(new FileNameExtensionFilter("CSV files", "csv"));
-                        fileChooser.setAcceptAllFileFilterUsed(true);
-                        int result = fileChooser.showSaveDialog(null);
-                        if (result == JFileChooser.APPROVE_OPTION) {
-                            modelGet.exportFile(fileChooser.getSelectedFile());
-                            function.open(fileChooser.getSelectedFile(), true);
-                        }
-                    } catch (Exception error) {
+                    JFileChooser fileChooser = new JFileChooser();
+                    fileChooser.setCurrentDirectory(new File(function.getAppPath() + "/Result"));
+                    fileChooser.setFileSelectionMode(JFileChooser.FILES_ONLY);
+                    fileChooser.addChoosableFileFilter(new FileNameExtensionFilter("Excel files", "xls"));
+                    fileChooser.addChoosableFileFilter(new FileNameExtensionFilter("CSV files", "csv"));
+                    fileChooser.setAcceptAllFileFilterUsed(true);
+                    int result = fileChooser.showSaveDialog(null);
+                    if (result == JFileChooser.APPROVE_OPTION) {
+                        modelGet.exportFile(fileChooser.getSelectedFile());
+                        function.open(fileChooser.getSelectedFile(), true);
                     }
                 }
             });
