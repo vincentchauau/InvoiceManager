@@ -5,13 +5,8 @@
  */
 package invoicemanager;
 
-import java.io.File;
-import java.nio.file.Files;
 import java.sql.*;
-import java.text.DateFormat;
-import java.text.SimpleDateFormat;
 import java.util.ArrayList;
-import java.util.Collections;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
@@ -30,33 +25,33 @@ public class Database {
             connection = DriverManager.getConnection("jdbc:sqlite:" + database);
             statement = connection.createStatement();
             // Create table
-            // BUY table: what you buy: id, add, seller, cat, des, inv, idate, amt with gst, gst, file, pdate, note
-            sql = "CREATE TABLE IF NOT EXISTS BUY(ID INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT, ADR TEXT DEFAULT '', SELLER TEXT DEFAULT '', CAT TEXT DEFAULT '', DES TEXT DEFAULT '', INV TEXT DEFAULT '', IDATE TEXT DEFAULT '', AMT REAL DEFAULT 0, GST REAL DEFAULT 0, FILE TEXT DEFAULT '', PDATE TEXT DEFAULT '', NOTE TEXT DEFAULT '')";
+            // INPUT table: what you input: id, add, outputer, cat, des, inv, idate, amt with gst, gst, file, pdate, note
+            sql = "CREATE TABLE IF NOT EXISTS INPUT(ID INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT, ADR TEXT DEFAULT '', SUP TEXT DEFAULT '', CAT TEXT DEFAULT '', DES TEXT DEFAULT '', INV TEXT DEFAULT '', IDATE TEXT DEFAULT '', AMT REAL DEFAULT 0, GST REAL DEFAULT 0, FILE TEXT DEFAULT '', PDATE TEXT DEFAULT '', NOTE TEXT DEFAULT '')";
             statement.executeUpdate(sql);
-            sql = "DROP TABLE IF EXISTS OLDBUY";
+            sql = "DROP TABLE IF EXISTS OLDINPUT";
             statement.executeUpdate(sql);
-            sql = "ALTER TABLE BUY RENAME TO OLDBUY";
+            sql = "ALTER TABLE INPUT RENAME TO OLDINPUT";
             statement.executeUpdate(sql);
-            sql = "CREATE TABLE BUY(ID INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT, ADR TEXT DEFAULT '', SELLER TEXT DEFAULT '', CAT TEXT DEFAULT '', DES TEXT DEFAULT '', INV TEXT DEFAULT '', IDATE TEXT DEFAULT '', AMT REAL DEFAULT 0, GST REAL DEFAULT 0, FILE TEXT DEFAULT '', PDATE TEXT DEFAULT '', NOTE TEXT DEFAULT '')";
+            sql = "CREATE TABLE INPUT(ID INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT, ADR TEXT DEFAULT '', SUP TEXT DEFAULT '', CAT TEXT DEFAULT '', DES TEXT DEFAULT '', INV TEXT DEFAULT '', IDATE TEXT DEFAULT '', AMT REAL DEFAULT 0, GST REAL DEFAULT 0, FILE TEXT DEFAULT '', PDATE TEXT DEFAULT '', NOTE TEXT DEFAULT '')";
             statement.executeUpdate(sql);
-            sql = "INSERT INTO BUY(ADR, SELLER, CAT, DES, INV, IDATE, AMT, GST, FILE, PDATE, NOTE) SELECT ADR, SELLER, CAT, DES, INV, IDATE, AMT, GST, FILE, PDATE, NOTE FROM OLDBUY ORDER BY ID";
+            sql = "INSERT INTO INPUT(ADR, SUP, CAT, DES, INV, IDATE, AMT, GST, FILE, PDATE, NOTE) SELECT ADR, SUP, CAT, DES, INV, IDATE, AMT, GST, FILE, PDATE, NOTE FROM OLDINPUT ORDER BY ID";
             statement.executeUpdate(sql);
-            sql = "DROP TABLE IF EXISTS OLDBUY";
+            sql = "DROP TABLE IF EXISTS OLDINPUT";
             statement.executeUpdate(sql);
 
-            // SELL table: what you sell: id, add, buyer, cat, iden, inv, idate, amt with gst, gst, file, pdate, items
+            // OUTPUT table: what you output: id, add, inputer, cat, iden, inv, idate, amt with gst, gst, file, pdate, items
             // items: job, amt without gst, qtt, gst
-            sql = "CREATE TABLE IF NOT EXISTS SELL(ID INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT, ADR TEXT DEFAULT '', BUYER TEXT DEFAULT '', CAT TEXT DEFAULT '', DES TEXT DEFAULT '', INV TEXT DEFAULT '', IDATE TEXT DEFAULT '', AMT REAL DEFAULT 0, GST REAL DEFAULT 0, FILE TEXT DEFAULT '', PDATE TEXT DEFAULT '', ITEMS TEXT DEFAULT '\f\f\f\b\f\f\f\b\f\f\f\b\f\f')";
+            sql = "CREATE TABLE IF NOT EXISTS OUTPUT(ID INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT, ADR TEXT DEFAULT '', CUS TEXT DEFAULT '', CAT TEXT DEFAULT '', DES TEXT DEFAULT '', INV TEXT DEFAULT '', IDATE TEXT DEFAULT '', AMT REAL DEFAULT 0, GST REAL DEFAULT 0, FILE TEXT DEFAULT '', PDATE TEXT DEFAULT '', ITEMS TEXT DEFAULT '\f\f\f\b\f\f\f\b\f\f\f\b\f\f')";
             statement.executeUpdate(sql);
-            sql = "DROP TABLE IF EXISTS OLDSELL";
+            sql = "DROP TABLE IF EXISTS OLDOUTPUT";
             statement.executeUpdate(sql);
-            sql = "ALTER TABLE SELL RENAME TO OLDSELL";
+            sql = "ALTER TABLE OUTPUT RENAME TO OLDOUTPUT";
             statement.executeUpdate(sql);
-            sql = "CREATE TABLE SELL(ID INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT, ADR TEXT DEFAULT '', BUYER TEXT DEFAULT '', CAT TEXT DEFAULT '', DES TEXT DEFAULT '', INV TEXT DEFAULT '', IDATE TEXT DEFAULT '', AMT REAL DEFAULT 0, GST REAL DEFAULT 0, FILE TEXT DEFAULT '', PDATE TEXT DEFAULT '', ITEMS TEXT DEFAULT '\f\f\f\b\f\f\f\b\f\f\f\b\f\f')";
+            sql = "CREATE TABLE OUTPUT(ID INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT, ADR TEXT DEFAULT '', CUS TEXT DEFAULT '', CAT TEXT DEFAULT '', DES TEXT DEFAULT '', INV TEXT DEFAULT '', IDATE TEXT DEFAULT '', AMT REAL DEFAULT 0, GST REAL DEFAULT 0, FILE TEXT DEFAULT '', PDATE TEXT DEFAULT '', ITEMS TEXT DEFAULT '\f\f\f\b\f\f\f\b\f\f\f\b\f\f')";
             statement.executeUpdate(sql);
-            sql = "INSERT INTO SELL(ADR, BUYER, CAT, DES, INV, IDATE, AMT, GST, FILE, PDATE, ITEMS) SELECT ADR, BUYER, CAT, DES, INV, IDATE, AMT, GST, FILE, PDATE, ITEMS FROM OLDSELL ORDER BY ID";
+            sql = "INSERT INTO OUTPUT(ADR, CUS, CAT, DES, INV, IDATE, AMT, GST, FILE, PDATE, ITEMS) SELECT ADR, CUS, CAT, DES, INV, IDATE, AMT, GST, FILE, PDATE, ITEMS FROM OLDOUTPUT ORDER BY ID";
             statement.executeUpdate(sql);
-            sql = "DROP TABLE IF EXISTS OLDSELL";
+            sql = "DROP TABLE IF EXISTS OLDOUTPUT";
             statement.executeUpdate(sql);
             return true;
         } catch (Exception error) {
@@ -219,7 +214,6 @@ public class Database {
 
     // 9. Insert string: (COLUMN1,COLUMN2,...) VALUES (VALUE1,VALUE2,...)
     public static String insertRowString(String[] columns, String[] types, String[] values) {
-        String sql = "";
         String column = "";
         String value = "";
         for (int i = 0; i < columns.length; ++i) {
@@ -346,7 +340,7 @@ public class Database {
 
     public static ResultSet getSummary(String group) {
         try {
-            sql = "SELECT T1.GRP, T1.AMT, T1.GST, COALESCE(T2.PAID,0.0) FROM (SELECT A.GRP, SUM(A.AMT) AS AMT, SUM(A.GST) AS GST FROM BUY AS A GROUP BY A.GRP) AS T1 LEFT JOIN (SELECT B.GRP, SUM(B.AMT) AS PAID FROM BUY AS B WHERE B.PDATE<>'' GROUP BY B.GRP) AS T2 ON T1.GRP=T2.GRP".replace("GRP", group);
+            sql = "SELECT T1.GRP, T1.AMT, T1.GST, COALESCE(T2.PAID,0.0) FROM (SELECT A.GRP, SUM(A.AMT) AS AMT, SUM(A.GST) AS GST FROM INPUT AS A GROUP BY A.GRP) AS T1 LEFT JOIN (SELECT B.GRP, SUM(B.AMT) AS PAID FROM INPUT AS B WHERE B.PDATE<>'' GROUP BY B.GRP) AS T2 ON T1.GRP=T2.GRP".replace("GRP", group);
             return statement.executeQuery(sql);
         } catch (Exception e) {
         }

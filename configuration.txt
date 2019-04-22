@@ -1,5 +1,10 @@
+headerColor:255
 databaseIndex:0
-mediumFont:18
+labelFont:14
+defaultColor:0
+headerFont:18
 GST:0.1
 dueTime:-14
-smallFont:14
+operatingSystem:win
+defaultFont:18
+labelColor:16711680

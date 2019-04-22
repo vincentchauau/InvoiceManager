@@ -69,23 +69,28 @@ import javax.swing.table.TableRowSorter;
  * @author vincentchauau
  */
 public class Function {
-
     private static Random random = new Random();
     // 1. System functions
     // Get the operating system names
-    public static int getOperatingSystemType() {
+    public static String getOperatingSystemType() {
         String OS = System.getProperty("os.name", "generic").toLowerCase(Locale.ENGLISH);
         if ((OS.indexOf("mac") >= 0) || (OS.indexOf("darwin") >= 0)) {
-            return 0;
+            return "mac";
         } else if (OS.indexOf("win") >= 0) {
-            return 1;
+            return "win";
         } else if (OS.indexOf("nux") >= 0 || OS.indexOf("nix") >= 0) {
-            return 2;
+            return "linux";
         } else {
-            return 3;
+            return "other";
         }
     }
-
+    public static boolean isPrintableKeyChar(char c) {
+        Character.UnicodeBlock block = Character.UnicodeBlock.of(c);
+        return (!Character.isISOControl(c))
+                && c != KeyEvent.CHAR_UNDEFINED
+                && block != null
+                && block != Character.UnicodeBlock.SPECIALS;
+    }
     // Print a pdf file
     public static boolean print(String pdf) {
         File file = new File(pdf);
@@ -132,14 +137,14 @@ public class Function {
         return new File("").getAbsoluteFile().getPath();
     }
 
-    public static boolean open(File file, boolean isFile) {
+    public static boolean open(File file) {
         try {
-            if (file.isFile() == isFile) {
-                if (getOperatingSystemType() == 1) {
+            if (file.isFile() == true) {
+                if (getOperatingSystemType().equals("win")) {
                     Runtime.getRuntime().exec(new String[]{"rundll32", "url.dll,FileProtocolHandler",
                         file.getAbsolutePath()});
                     return true;
-                } else if (getOperatingSystemType() == 0 || getOperatingSystemType() == 2) {
+                } else if (getOperatingSystemType().equals("mac") || getOperatingSystemType().equals("linux")) {
                     Runtime.getRuntime().exec(new String[]{"/usr/bin/open",
                         file.getAbsolutePath()});
                     return true;
@@ -288,9 +293,6 @@ public class Function {
     }
 
     public static void sort(JTable table) {
-        //table.setRowSelectionAllowed(true);
-        //table.setColumnSelectionAllowed(true);
-        table.getTableHeader().setForeground(Color.BLUE);
         table.getTableHeader().setReorderingAllowed(false);
         table.setRowHeight(20);
         table.setAutoCreateRowSorter(true);
@@ -328,23 +330,27 @@ public class Function {
     }
 
     // Setup font for controls
-    public static void setUIFont(javax.swing.plaf.FontUIResource f) {
+    public static void setFontColor(Font font, Color foreGround) {
         java.util.Enumeration keys = UIManager.getDefaults().keys();
         while (keys.hasMoreElements()) {
             Object key = keys.nextElement();
             Object value = UIManager.get(key);
-            if (value instanceof javax.swing.plaf.FontUIResource) {
-                UIManager.put(key, f);
+            if (value instanceof Font) {
+                UIManager.put(key, font);
+            }
+            if (key.toString().toLowerCase().contains("foreground")) {
+                UIManager.put(key, foreGround);
             }
         }
     }
 
     // Setup font for containers
-    public static void changeFontRecursive(Container root, Font font) {
+    public static void setFontColor(Container root, Font font, Color color) {
         for (Component c : root.getComponents()) {
             c.setFont(font);
+            c.setForeground(color);
             if (c instanceof Container) {
-                changeFontRecursive((Container) c, font);
+                setFontColor((Container) c, font, color);
             }
         }
     }
@@ -439,5 +445,13 @@ public class Function {
     ConsoleHandler handler = new ConsoleHandler();
     handler.setLevel(Level.ALL);
     focusLog.addHandler(handler);
-}
+    }
+    public static void setColumns(JTable table, String[] columns)
+    {
+        for (int i = 0; i < columns.length; ++i)
+        {
+            table.getColumnModel().getColumn(i).setHeaderValue(columns[i]);
+            table.repaint();
+        }
+    }
 }

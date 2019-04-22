@@ -7,10 +7,7 @@ import java.io.FileWriter;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
-import java.util.Vector;
-import javax.swing.JOptionPane;
 import javax.swing.table.AbstractTableModel;
-import jxl.Cell;
 import jxl.Sheet;
 import jxl.Workbook;
 import jxl.write.*;
@@ -27,7 +24,7 @@ class EditableTableModel extends AbstractTableModel {
     public List<String[]> rows;
     boolean[] columnEditables;
     public int[] selectedRows;
-    public double amount, gst, paid, GST;
+    public double amount, gst, paid;
     public List<String[]> autoCompleteColumns;
     Function function = new Function();
     // 1. Get columns, column types
@@ -51,31 +48,38 @@ class EditableTableModel extends AbstractTableModel {
         }
     }
     // 2. Set editable columns
+    @Override
     public boolean isCellEditable(int row, int column) {
         return columnEditables[column];
     }
     
     // 3. Get row count, column count, column name, column class
+    @Override
     public int getRowCount() {
         return rows.size();
     }
 
+    @Override
     public int getColumnCount() {
         return columns.length;
     }
 
+    @Override
     public String getColumnName(int column) {
         return columns[column];
     }
 
+    @Override
     public Class getColumnClass(int column) {
         return String.class;
     }
     // 4. Get and set cell value
+    @Override
     public Object getValueAt(int row, int column) {
         return rows.get(row)[column];
     }
     
+    @Override
     public void setValueAt(Object value, int row, int column) 
     {
         String val = String.valueOf(value);
@@ -85,12 +89,11 @@ class EditableTableModel extends AbstractTableModel {
             rows.get(row)[column] = String.valueOf(value);
             fireTableRowsUpdated(row, row);
             getStatistic();
-            if (columns[column].equals("AMT"))
+            if (column == 7)
             {
-                double gst = function.parseDouble(val)*GST;
-                setValueAt(gst, row, column + 1);
+                double gst = Function.parseDouble(rows.get(row)[column])*0.1;
+                setValueAt(gst, row, 8);
             }
-            else{}
         }
         else{}
     }
@@ -230,6 +233,7 @@ class EditableTableModel extends AbstractTableModel {
                     }
                 }
                 excel.write();
+                excel.close();
                 return true;
             } else {
             }
