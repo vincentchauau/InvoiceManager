@@ -128,13 +128,15 @@ public class InvoiceManager {
                 rows = Function.string2Array(value);
                 for (String[] row : rows) {
                     modelPick.addRow(row);
-                }   break;
+                }
+                break;
             case "INPUT":
                 modelPick.setRowCount(0);
                 rows = Database.resultSet2Rows(Database.getSummary(cbColumns.getSelectedItem().toString()));
                 for (String[] row : rows) {
                     modelPick.addRow(row);
-                }   break;
+                }
+                break;
             default:
                 break;
         }
@@ -329,7 +331,7 @@ public class InvoiceManager {
             dateFormat2 = new SimpleDateFormat("dd.MM.yy");
             // Events
             // Logic: database => table => model
-            frame.addWindowListener(new WindowAdapter(){
+            frame.addWindowListener(new WindowAdapter() {
                 // 1. Get databases
                 @Override
                 public void windowOpened(WindowEvent e) {
@@ -412,8 +414,7 @@ public class InvoiceManager {
                                 tfColumnCell = new JTextFieldX(new String[]{});
                                 tfSet = new JTextFieldX(new String[]{});
                             }
-                            tbGet.getColumnModel().getColumn(i).setCellEditor(new DefaultCellEditor(tfColumnCell) 
-                            {
+                            tbGet.getColumnModel().getColumn(i).setCellEditor(new DefaultCellEditor(tfColumnCell) {
                                 public boolean isCellEditable(EventObject evt) {
                                     if (evt instanceof MouseEvent) {
                                         if (((MouseEvent) evt).getClickCount() == 2) {
@@ -501,7 +502,7 @@ public class InvoiceManager {
                             Function.setColumns(tbPick, new String[]{"JOB", "AMT", "QTT", "GST"});
                         }
                         modelPick.setRowCount(0);
-                        
+
                         // Add combobox, tooltips
                         modelGet.columnEditables[9] = false;
                         if (modelGet.table.equals("INPUT")) {
@@ -559,7 +560,7 @@ public class InvoiceManager {
                         } else {
                             modelPick.setRowCount(0);
                         }
-                    } else { 
+                    } else {
                         if (tbGet.getSelectedRow() != -1) {
                             getSetPickValues(tbGet.convertRowIndexToModel(tbGet.getSelectedRow()));
                         }
